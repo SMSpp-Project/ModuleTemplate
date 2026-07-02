@@ -1,0 +1,53 @@
+##############################################################################
+################################ makefile-c ##################################
+##############################################################################
+#                                                                            #
+#   complete makefile of TemplateBlock                                       #
+#                                                                            #
+#   The makefile defines internally all external libraries (comprised the    #
+#   SMS++ one) required by TemplateBlock. Accordingly, all necessary         #
+#   OBJ, H, -I directives, external libraries + -L< libdirs > are added to   #
+#   the corresponding TmpBk* macros.                                         #
+#                                                                            #
+#   Input:  $(CC)        = compiler command                                  #
+#           $(SW)        = compiler options                                  #
+#           $(TmpBkSDR)  = the directory where TemplateBlock source is       #
+#           $(TmpBkODR)  = the directory where the objects have to be put    #
+#                                                                            #
+#   Output: $(TmpBkOBJ)  = the final object(s) / library                     #
+#           $(TmpBkLIB)  = external libraries + -L< libdirs >                #
+#           $(TmpBkH)    = the .h files to include for TemplateBlock         #
+#           $(TmpBkINC)  = the -I$( TemplateBlock directory )                #
+#                                                                            #
+#                              Template Author                               #
+#                         Dipartimento di Informatica                        #
+#                             Universita' di Pisa                            #
+#                                                                            #
+##############################################################################
+
+# define & include the necessary modules- - - - - - - - - - - - - - - - - - -
+# if a module is not used in the current configuration, just comment out the
+# corresponding include line
+# each module outputs some macros to be used here:
+# *OBJ is the final object/library
+# *H   is the list of all include files
+# *INC is the -I< include directories >
+
+# define input macros for SMS++ complete makefile, then include it
+SMS++SDR = $(TmpBkSDR)/../SMS++
+include $(SMS++SDR)/lib/makefile-c
+
+# include the makefile requiring all external modules in input
+include $(TmpBkSDR)/makefile
+
+# macros to be exported - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# append external -I directives to TmpBkINC, TmpBkOBJ and TmpBkH as defined
+# by the makefile, thus the := assignment has to be used (use GNU make)
+TmpBkOBJ := $(TmpBkOBJ) $(SMS++OBJ)
+TmpBkINC := $(TmpBkINC) $(SMS++INC)
+
+# external libraries for TemplateBlock
+TmpBkLIB = $(SMS++LIB)
+
+############################ End of makefile #################################
