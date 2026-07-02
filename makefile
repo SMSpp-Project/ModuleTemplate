@@ -19,7 +19,7 @@
 #           $(TmpBkH)    = the .h files to include                           #
 #           $(TmpBkINC)  = the -I$( source directory )                       #
 #                                                                            #
-#                              Template Author                               #
+#                             Antonio Frangioni                              #
 #                         Dipartimento di Informatica                        #
 #                             Universita' di Pisa                            #
 #                                                                            #

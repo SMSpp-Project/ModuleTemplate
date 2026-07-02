@@ -4,7 +4,7 @@
 #                                                                            #
 #   makefile of test (for TemplateBlock)                                     #
 #                                                                            #
-#                              Template Author                               #
+#                                Donato Meoli                                #
 #                         Dipartimento di Informatica                        #
 #                             Universita' di Pisa                            #
 #                                                                            #

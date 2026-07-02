@@ -19,7 +19,7 @@
 #           $(TmpBkH)    = the .h files to include for TemplateBlock         #
 #           $(TmpBkINC)  = the -I$( TemplateBlock directory )                #
 #                                                                            #
-#                              Template Author                               #
+#                             Antonio Frangioni                              #
 #                         Dipartimento di Informatica                        #
 #                             Universita' di Pisa                            #
 #                                                                            #
