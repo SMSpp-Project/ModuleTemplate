@@ -25,6 +25,12 @@ dependencies, re-creates the git history, and (with `--umbrella`) registers
 the module in the SMS++ umbrella project. Run `./init.sh --help` for all the
 options.
 
+With `--push` it pushes both the `develop` branch and a stable `master` one,
+as in every SMS++ module. Create the remote project **empty** (do not let the
+host initialize it with a README): pushing `develop` first then makes it the
+default branch automatically, with no `main` stub to rename and no manual step
+in the web UI beyond protecting the two branches once.
+
 After initialization the directory is a complete SMS++ module:
 
 ```

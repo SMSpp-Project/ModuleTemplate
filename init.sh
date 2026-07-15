@@ -37,7 +37,10 @@ Options:
                          (default: https://gitlab.com/smspp/<lowercase name>)
   --remote <git-url>     set this as the git remote 'origin'
   --push                 push the initial commit to 'origin' (implies
-                         --remote or an already-configured origin)
+                         --remote or an already-configured origin); pushes
+                         'develop' and a stable 'master'. Create the remote
+                         project EMPTY (no README) so 'develop' becomes the
+                         default branch automatically, with no 'main' stub
   --umbrella <path>      path to a checkout of the SMS++ umbrella project:
                          registers the module there (git submodule add +
                          CMakeLists.txt patches); the module must be
@@ -251,10 +254,18 @@ if [ -n "$REMOTE" ]; then
 fi
 
 if [ "$PUSH" = 1 ]; then
+ # push 'develop' first: on an EMPTY project (created without a README) this
+ # also makes it the default branch, so no manual GUI step is needed and no
+ # spurious 'main' branch is ever created
  git push -u origin develop
- echo "Pushed branch 'develop' to origin."
+ # SMS++ convention: a stable 'master' branch exists alongside 'develop'
+ # (both carry the full module; master advances at each release)
+ git push origin develop:refs/heads/master
+ echo "Pushed branches 'develop' (default) and 'master' to origin."
+ echo "One-time GUI step left: protect 'develop' and 'master'."
 elif [ -n "$REMOTE" ]; then
- echo "Push it yourself with: git push -u origin develop"
+ echo "Push it yourself with:"
+ echo "  git push -u origin develop && git push origin develop:refs/heads/master"
 fi
 
 # ----- umbrella registration ---------------------------------------------------
