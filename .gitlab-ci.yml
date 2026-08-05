@@ -17,11 +17,7 @@ build:
     - eval $(ssh-agent -s)
     - ssh-add <(echo "$SMSPP_DEPLOY_KEY")
     - mkdir -p ~/.ssh && ssh-keyscan -H gitlab.com >> ~/.ssh/known_hosts
-    - if [ -d smspp-project ]; then (cd smspp-project && git pull); else git clone --branch develop git@gitlab.com:smspp/smspp-project.git; fi
-    # the umbrella comes from the cache with its submodules at the commits of
-    # whenever it was first cloned, and git pull does not move them: without
-    # this the build silently keeps compiling the old sources
-    - (cd smspp-project && git submodule update --recursive)
+    - if [ -d smspp-project ]; then (cd smspp-project && git pull && git submodule update --recursive); else git clone --branch develop git@gitlab.com:smspp/smspp-project.git; fi
     - cmake -S smspp-project -B smspp-project/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DBUILD_TemplateBlock=ON
     - cmake --build smspp-project/build --target install
   artifacts:
