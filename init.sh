@@ -41,6 +41,15 @@ Options:
                          'develop' and a stable 'master'. Create the remote
                          project EMPTY (no README) so 'develop' becomes the
                          default branch automatically, with no 'main' stub
+  --gitlab               after pushing, set the GitLab project up the way
+                         every SMS++ module is: protect 'develop' and
+                         'master' and copy the CI/CD variables (the Gurobi
+                         WLS license and the deploy key the CI needs) from
+                         --reference. Needs the 'glab' CLI, authenticated
+                         with a Maintainer of both projects. Given alone, in
+                         a checkout of an existing module, it does only this
+  --reference <path>     project the CI/CD variables are copied from
+                         (default: smspp/binaryknapsackblock)
   --umbrella <path>      path to a checkout of the SMS++ umbrella project:
                          registers the module there (git submodule add +
                          CMakeLists.txt patches); the module must be
@@ -55,9 +64,77 @@ EOF
 
 die() { echo "init.sh: $*" >&2 ; exit 1 ; }
 
+# ----- GitLab project setup ---------------------------------------------------
+# What every SMS++ module has and what a fresh project has not: 'develop' and
+# 'master' protected, and the CI/CD variables the pipeline needs, i.e. the
+# Gurobi WLS license and the deploy key. The variables are copied from an
+# existing module rather than kept anywhere here: they are secrets, and the
+# only place they belong to is GitLab itself.
+
+gitlab_setup() {
+ command -v glab >/dev/null 2>&1 || \
+  die "--gitlab needs the 'glab' CLI (https://gitlab.com/gitlab-org/cli)"
+
+ # the <group>/<project> path, whatever form the remote URL has
+ local url project encoded reference
+ url=$( git remote get-url origin )
+ project=$( printf '%s' "$url" | sed -E 's#^[^@]+@[^:]+:##; s#^https?://[^/]+/##; s#\.git$##' )
+ encoded=$( printf '%s' "$project" | sed 's#/#%2F#g' )
+ reference=$( printf '%s' "$REFERENCE" | sed 's#/#%2F#g' )
+
+ echo "Setting up $project on GitLab:"
+
+ # 40 = Maintainer, the level every SMS++ module protects its branches at
+ local branch
+ for branch in develop master ; do
+  if glab api --method POST "projects/$encoded/protected_branches" \
+       --raw-field "name=$branch" --field "push_access_level=40" \
+       --field "merge_access_level=40" >/dev/null 2>&1 ; then
+   echo "  protected '$branch'"
+  else
+   echo "  could not protect '$branch' (already protected?)"
+  fi
+ done
+
+ # the variables are read one at a time, so that no secret is ever written
+ # anywhere but into the API call that carries it
+ local keys key value protected masked raw
+ keys=$( glab api "projects/$reference/variables" |
+         python3 -c 'import json,sys; print("\n".join(v["key"] for v in json.load(sys.stdin)))' ) \
+  || die "cannot read the CI/CD variables of $REFERENCE"
+
+ for key in $keys ; do
+  # the flags first, one per line, then the value: it is the only one that
+  # may contain anything at all, newlines included, hence it comes last and
+  # NUL-terminated
+  { read -r protected ; read -r masked ; read -r raw
+    IFS= read -r -d '' value ; } < <( glab api \
+     "projects/$reference/variables/$key" | python3 -c '
+import json, sys
+v = json.load( sys.stdin )
+for field in ( "protected" , "masked" , "raw" ):
+    print( str( v[ field ] ).lower() )
+sys.stdout.write( v[ "value" ] + "\0" )
+' )
+
+  if glab api --method POST "projects/$encoded/variables" \
+       --raw-field "key=$key" --raw-field "value=$value" \
+       --field "protected=$protected" --field "masked=$masked" \
+       --field "raw=$raw" >/dev/null 2>&1 ; then
+   echo "  copied the CI/CD variable '$key' from $REFERENCE"
+  else
+   echo "  could not copy '$key' (already there?)"
+  fi
+  unset value
+ done
+
+ }  # end( gitlab_setup )
+
+
 # ----- argument parsing -----------------------------------------------------
 
 NAME= AUTHOR= DESC= PFX= DEPS= URL= REMOTE= PUSH=0 UMBRELLA=
+GITLAB=0 REFERENCE=smspp/binaryknapsackblock
 
 while [ $# -gt 0 ]; do
  case "$1" in
@@ -69,11 +146,22 @@ while [ $# -gt 0 ]; do
   --url )      URL=$2 ; shift 2 ;;
   --remote )   REMOTE=$2 ; shift 2 ;;
   --push )     PUSH=1 ; shift ;;
+  --gitlab )   GITLAB=1 ; shift ;;
+  --reference ) REFERENCE=$2 ; shift 2 ;;
   --umbrella ) UMBRELLA=$2 ; shift 2 ;;
   -h|--help )  usage ; exit 0 ;;
   * ) die "unknown option '$1' (see --help)" ;;
  esac
 done
+
+# --gitlab given alone, in a checkout of an existing module, does only that:
+# it is how a module created before this option is brought up to standard
+if [ "$GITLAB" = 1 ] && [ -z "$NAME" ]; then
+ git rev-parse --git-dir >/dev/null 2>&1 || \
+  die "--gitlab alone must be run in a checkout of the module"
+ gitlab_setup
+ exit 0
+fi
 
 [ -n "$NAME" ] || { usage ; exit 1 ; }
 [[ "$NAME" =~ ^[A-Z][A-Za-z0-9]*$ ]] || \
@@ -262,7 +350,10 @@ if [ "$PUSH" = 1 ]; then
  # (both carry the full module; master advances at each release)
  git push origin develop:refs/heads/master
  echo "Pushed branches 'develop' (default) and 'master' to origin."
- echo "One-time GUI step left: protect 'develop' and 'master'."
+ if [ "$GITLAB" = 1 ]; then gitlab_setup ; else
+  echo "One-time GUI step left: protect 'develop' and 'master' and add the"
+  echo "CI/CD variables (or re-run with --gitlab)."
+ fi
 elif [ -n "$REMOTE" ]; then
  echo "Push it yourself with:"
  echo "  git push -u origin develop && git push origin develop:refs/heads/master"

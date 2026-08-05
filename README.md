@@ -28,8 +28,22 @@ options.
 With `--push` it pushes both the `develop` branch and a stable `master` one,
 as in every SMS++ module. Create the remote project **empty** (do not let the
 host initialize it with a README): pushing `develop` first then makes it the
-default branch automatically, with no `main` stub to rename and no manual step
-in the web UI beyond protecting the two branches once.
+default branch automatically, with no `main` stub to rename.
+
+`--gitlab` does what is left of the project setup, and what the web UI would
+otherwise be needed for: it protects `develop` and `master` at the Maintainer
+level and copies the CI/CD variables the pipeline needs, the Gurobi WLS
+license and the deploy key, from an existing module (`--reference`, by default
+`smspp/binaryknapsackblock`). The variables are copied rather than kept here:
+they are secrets, and GitLab is the only place they belong to. It needs the
+[`glab`](https://gitlab.com/gitlab-org/cli) CLI, authenticated with a
+Maintainer of both projects. Given alone, in a checkout of an existing module,
+it does only this, which is how a module created before this option is brought
+up to standard:
+
+```bash
+cd MyOlderBlock && /path/to/init.sh --gitlab
+```
 
 After initialization the directory is a complete SMS++ module:
 
