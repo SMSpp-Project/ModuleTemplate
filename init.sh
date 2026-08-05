@@ -43,11 +43,14 @@ Options:
                          default branch automatically, with no 'main' stub
   --gitlab               after pushing, set the GitLab project up the way
                          every SMS++ module is: protect 'develop' and
-                         'master' and copy the CI/CD variables (the Gurobi
-                         WLS license and the deploy key the CI needs) from
-                         --reference. Needs the 'glab' CLI, authenticated
-                         with a Maintainer of both projects. Given alone, in
-                         a checkout of an existing module, it does only this
+                         'master', give it the description of --desc, ending
+                         with a full stop as every other one does, and copy
+                         the CI/CD variables (the Gurobi WLS license and the
+                         deploy key the CI needs) from --reference. Needs the
+                         'glab' CLI, authenticated with a Maintainer of both
+                         projects. Given alone, in a checkout of an existing
+                         module, it does only this, taking the description
+                         already there if --desc is not given
   --reference <path>     project the CI/CD variables are copied from
                          (default: smspp/binaryknapsackblock)
   --umbrella <path>      path to a checkout of the SMS++ umbrella project:
@@ -95,6 +98,26 @@ gitlab_setup() {
    echo "  could not protect '$branch' (already protected?)"
   fi
  done
+
+ # the description of the project, i.e. what the GitLab project page shows
+ # under its name: it is the one of --desc, or the one already there when
+ # this is run on an existing module, and it ends with a full stop, as the
+ # description of every SMS++ module does
+ local description
+ description=${DESC:-$( glab api "projects/$encoded" |
+   python3 -c 'import json,sys; print( json.load( sys.stdin )[ "description" ]
+                                       or "" )' )}
+
+ if [ -n "$description" ]; then
+  case "$description" in *. ) ;; * ) description="$description." ;; esac
+
+  if glab api --method PUT "projects/$encoded" \
+       --raw-field "description=$description" >/dev/null 2>&1 ; then
+   echo "  described as \"$description\""
+  else
+   echo "  could not set the description"
+  fi
+ fi
 
  # the variables are read one at a time, so that no secret is ever written
  # anywhere but into the API call that carries it

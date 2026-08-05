@@ -32,14 +32,17 @@ default branch automatically, with no `main` stub to rename.
 
 `--gitlab` does what is left of the project setup, and what the web UI would
 otherwise be needed for: it protects `develop` and `master` at the Maintainer
-level and copies the CI/CD variables the pipeline needs, the Gurobi WLS
-license and the deploy key, from an existing module (`--reference`, by default
-`smspp/binaryknapsackblock`). The variables are copied rather than kept here:
-they are secrets, and GitLab is the only place they belong to. It needs the
+level, gives the project the description of `--desc`, ending with a full stop
+as every other SMS++ module does, and copies the CI/CD variables the pipeline
+needs, the Gurobi WLS license and the deploy key, from an existing module
+(`--reference`, by default `smspp/binaryknapsackblock`). The variables are
+copied rather than kept here: they are secrets, and GitLab is the only place
+they belong to. It needs the
 [`glab`](https://gitlab.com/gitlab-org/cli) CLI, authenticated with a
 Maintainer of both projects. Given alone, in a checkout of an existing module,
-it does only this, which is how a module created before this option is brought
-up to standard:
+it does only this, taking the description already there when `--desc` is not
+given, which is how a module created before this option is brought up to
+standard:
 
 ```bash
 cd MyOlderBlock && /path/to/init.sh --gitlab
