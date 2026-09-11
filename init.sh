@@ -46,8 +46,8 @@ Options:
                          project EMPTY (no README) so 'develop' becomes the
                          default branch automatically, with no 'main' stub
   --gitlab               after pushing, set the GitLab project up the way
-                         every SMS++ module is: protect 'develop' and
-                         'master', give it the description of --desc, ending
+                         every SMS++ module is: protect 'develop', 'master'
+                         and the tags, give it the description of --desc, ending
                          with a full stop as every other one does, and copy
                          the CI/CD variables (the Gurobi WLS license and the
                          deploy key the CI needs) from --reference. Needs the
@@ -104,6 +104,16 @@ gitlab_setup() {
    echo "  could not protect '$branch' (already protected?)"
   fi
  done
+
+ # the tags are protected too, so that a release pipeline sees the protected
+ # variables, the deploy key of the CI comprised, as a branch pipeline does
+ if glab api --method POST "projects/$encoded/protected_tags" \
+      --raw-field "name=*" --field "create_access_level=40" \
+      >/dev/null 2>&1 ; then
+  echo "  protected the tags"
+ else
+  echo "  could not protect the tags (already protected?)"
+ fi
 
  # the description of the project, i.e. what the GitLab project page shows
  # under its name: it is the one of --desc, or the one already there when
