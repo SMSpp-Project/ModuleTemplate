@@ -25,6 +25,15 @@ dependencies, re-creates the git history, and (with `--umbrella`) registers
 the module in the SMS++ umbrella project. Run `./init.sh --help` for all the
 options.
 
+The packages of SMS++ name a module by its acronym, as the vcpkg feature
+`smspp[<acr>]` or the conda-forge package `libsmspp-<acr>` (e.g. `bkb` for
+BinaryKnapsackBlock): `--acronym` gives it, by default the lowercase name.
+With `--umbrella` the module also becomes a feature of the smspp port in the
+`vcpkg-registry` of the umbrella, needing the features of its dependencies,
+to which its external dependencies are then to be added by hand. In the
+conda-forge `smspp-project` feedstock, the module is one line of the table of
+`recipe/gen_meta.py`, which regenerates `recipe/meta.yaml`.
+
 With `--push` it pushes both the `develop` branch and a stable `master` one,
 as in every SMS++ module. Create the remote project **empty** (do not let the
 host initialize it with a README): pushing `develop` first then makes it the

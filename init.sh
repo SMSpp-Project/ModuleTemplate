@@ -33,6 +33,10 @@ Options:
                          <ModuleName> followed by 'k')
   --deps <A,B,...>       comma-separated SMS++ modules this one depends on,
                          e.g. MILPSolver,BundleSolver (default: none)
+  --acronym <acr>        the short name of the module in the packages, as
+                         the vcpkg feature smspp[<acr>] or the conda package
+                         libsmspp-<acr>, e.g. bkb for BinaryKnapsackBlock
+                         (default: the lowercase name)
   --url <url>            project homepage
                          (default: https://gitlab.com/smspp/<lowercase name>)
   --remote <git-url>     set this as the git remote 'origin'
@@ -55,7 +59,9 @@ Options:
                          (default: smspp/binaryknapsackblock)
   --umbrella <path>      path to a checkout of the SMS++ umbrella project:
                          registers the module there (git submodule add +
-                         CMakeLists.txt patches); the module must be
+                         CMakeLists.txt patches) and in the smspp port of
+                         its vcpkg-registry (the feature <acr>); the
+                         module must be
                          reachable at its remote URL, so use it with --push
                          (or after having pushed)
   -h, --help             show this help
@@ -156,7 +162,7 @@ sys.stdout.write( v[ "value" ] + "\0" )
 
 # ----- argument parsing -----------------------------------------------------
 
-NAME= AUTHOR= DESC= PFX= DEPS= URL= REMOTE= PUSH=0 UMBRELLA=
+NAME= AUTHOR= DESC= PFX= DEPS= URL= REMOTE= PUSH=0 UMBRELLA= ACRONYM=
 GITLAB=0 REFERENCE=smspp/binaryknapsackblock
 
 while [ $# -gt 0 ]; do
@@ -166,6 +172,7 @@ while [ $# -gt 0 ]; do
   --desc )     DESC=$2 ; shift 2 ;;
   --prefix )   PFX=$2 ; shift 2 ;;
   --deps )     DEPS=$2 ; shift 2 ;;
+  --acronym )  ACRONYM=$2 ; shift 2 ;;
   --url )      URL=$2 ; shift 2 ;;
   --remote )   REMOTE=$2 ; shift 2 ;;
   --push )     PUSH=1 ; shift ;;
@@ -193,6 +200,7 @@ fi
  die "run me from the root of a fresh ModuleTemplate clone"
 
 LOWER=$(echo "$NAME" | tr '[:upper:]' '[:lower:]')
+ACRONYM=${ACRONYM:-$LOWER}
 [ -n "$AUTHOR" ] || AUTHOR=$(git config user.name 2>/dev/null || true)
 [ -n "$AUTHOR" ] || die "no --author given and no git user.name configured"
 [ -n "$DESC" ]   || DESC="SMS++ $NAME module"
@@ -436,6 +444,43 @@ open(path, 'w').write(src)
 print(f"Patched {path}")
 PYEOF
 
+ # the feature of the module in the smspp port of the vcpkg registry, with
+ # the features of the modules it needs; the external dependencies of the
+ # module are for the user to add to it
+ PORT="$UMBRELLA/vcpkg-registry/ports/smspp"
+ if [ -f "$PORT/vcpkg.json" ] && [ -f "$PORT/portfile.cmake" ]; then
+  python3 - "$PORT" "$NAME" "$ACRONYM" "$DESC" "${DIRECT_DEPS[*]:-}" <<'PYEOF'
+import json, re, sys
+port, name, acr, desc, deps = sys.argv[1:6]
+deps = deps.split() if deps else []
+
+# the portfile maps each feature to the BUILD_<module> option of the umbrella
+pf = open(f"{port}/portfile.cmake").read()
+m = re.search(r"set\(smspp_modules\n(.*?)\)", pf, re.S)
+pairs = [l.split() for l in m.group(1).strip().splitlines()]
+feature = {mod: feat for feat, mod in pairs}
+if name not in feature:
+    pairs.append([acr, name])
+    pairs.sort()
+    body = "\n".join(f"    {f} {d}" for f, d in pairs)
+    pf = pf[:m.start(1)] + body + pf[m.end(1):]
+    open(f"{port}/portfile.cmake", "w").write(pf)
+
+vj = json.load(open(f"{port}/vcpkg.json"))
+if acr not in vj["features"]:
+    entry = {"description": desc}
+    needed = sorted(feature[d] for d in deps if d in feature)
+    if needed:
+        entry["dependencies"] = [{"name": "smspp", "default-features": False,
+                                  "features": needed}]
+    vj["features"][acr] = entry
+    vj["features"] = dict(sorted(vj["features"].items()))
+    vj["default-features"] = sorted(set(vj["default-features"]) | {acr})
+    open(f"{port}/vcpkg.json", "w").write(json.dumps(vj, indent=2) + "\n")
+print(f"Added the feature {acr} to {port}")
+PYEOF
+ fi
+
  # register the git submodule (needs the module pushed to its remote)
  SUBURL="../$LOWER.git"
  if git -C "$UMBRELLA" submodule add "$SUBURL" "$NAME" ; then
@@ -450,6 +495,12 @@ PYEOF
  echo "Review the umbrella changes and commit them yourself:"
  echo "  (cd $UMBRELLA && git diff CMakeLists.txt && git status)"
  echo "Remember to also mention the new module in the umbrella README.md."
+ if [ -f "$PORT/vcpkg.json" ]; then
+  echo "In $PORT, add the external dependencies of the module to its"
+  echo "feature '$ACRONYM' in vcpkg.json, and commit the port in the registry."
+ fi
+ echo "In the conda-forge smspp-project feedstock, add libsmspp-$ACRONYM to"
+ echo "the table of recipe/gen_meta.py and regenerate recipe/meta.yaml."
 fi
 
 echo
