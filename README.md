@@ -71,6 +71,11 @@ MyNewBlock/
 └── .github/workflows/ci.yml identical in every module, self-adapting
 ```
 
+The module has no version until it is released: a release is a `git tag
+x.y.z` on `develop`, which the CMake build reads as the version of the module,
+once the Unreleased section of `CHANGELOG.md` has become the section of
+`x.y.z`.
+
 ## License
 
 This template is provided free of charge under the [GNU Lesser General

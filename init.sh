@@ -206,7 +206,6 @@ ACRONYM=${ACRONYM:-$LOWER}
 [ -n "$DESC" ]   || DESC="SMS++ $NAME module"
 [ -n "$PFX" ]    || PFX="$(echo "$NAME" | tr -cd '[:upper:]')k"
 [ -n "$URL" ]    || URL="https://gitlab.com/smspp/$LOWER"
-TODAY=$(date +%F)
 
 # the SMS++ inter-module dependency map (mirrors the "Handle dependencies"
 # section of the umbrella CMakeLists.txt), used to close the CI build flags
@@ -260,7 +259,6 @@ files | while read -r f ; do
   -e "s/templateblock/$LOWER/g" \
   -e "s/TmpBk/$PFX/g" \
   -e "s/Template Author/$AUTHOR/g" \
-  -e "s/@date@/$TODAY/g" \
   "$f"
 done
 
